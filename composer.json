@@ -1,0 +1,62 @@
+{
+    "name": "proai/laravel-data-integrity",
+    "description": "Scan your Eloquent models for data integrity violations and fix them automatically.",
+    "type": "library",
+    "keywords": [
+        "laravel",
+        "database",
+        "data-integrity",
+        "audit",
+        "eloquent",
+        "validation"
+    ],
+    "homepage": "http://github.com/proai/laravel-data-integrity",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Markus J. Wetzel",
+            "email": "markuswetzel@gmx.net"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/console": "^11.0|^12.0",
+        "illuminate/database": "^11.0|^12.0",
+        "illuminate/support": "^11.0|^12.0",
+        "symfony/finder": "^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^2.0|^3.0",
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "ProAI\\DataIntegrity\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ProAI\\DataIntegrity\\Tests\\": "tests/",
+            "ProAI\\DataIntegrity\\Tests\\Fixtures\\": "tests/Fixtures/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ProAI\\DataIntegrity\\DataIntegrityServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "format": "vendor/bin/pint"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
