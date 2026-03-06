@@ -20,6 +20,7 @@ class AuditCommand extends Command
     protected $signature = 'db:audit
                 {directory? : Only run audits from this subdirectory}
                 {--model= : Only run audits for this model}
+                {--filter= : Only run audits whose description matches this string}
                 {--fix : Fix issues automatically}';
 
     /**
@@ -57,8 +58,25 @@ class AuditCommand extends Command
             ));
         }
 
+        $descriptionFilter = $this->option('filter');
+
+        if ($descriptionFilter) {
+            $audits = array_values(array_filter(
+                $audits,
+                fn (Audit $audit) => str_contains(
+                    strtolower($audit->getDescription() ?? ''),
+                    strtolower($descriptionFilter),
+                ),
+            ));
+        }
+
         if (empty($audits)) {
-            $this->line("  <fg=yellow>No audits found for model {$modelFilter}.</>");
+            $label = $modelFilter
+                ? "No audits found for model {$modelFilter}."
+                : ($descriptionFilter
+                    ? "No audits found matching \"{$descriptionFilter}\"."
+                    : 'No audits found.');
+            $this->line("  <fg=yellow>$label</>");
             $this->newLine();
 
             return;
@@ -163,7 +181,7 @@ class AuditCommand extends Command
                 ->contains(fn (Audit $audit) => $allViolations[spl_object_id($audit)]->isNotEmpty());
 
             $badge = $suiteHasFailed
-                ? '  <fg=white;bg=red> FAILED </>'
+                ? '  <fg=black;bg=red> FAIL </>'
                 : '  <fg=black;bg=green> PASS </>';
 
             $this->output->write("\033[1A");
@@ -179,7 +197,7 @@ class AuditCommand extends Command
                 if (! $passed) {
                     foreach ($violations->pluck('reason') as $i => $reason) {
                         $number = $i + 1;
-                        $this->line("    <fg=red>$number)</> <fg=gray>$reason</>");
+                        $this->line("    <fg=red>$number)</> $reason");
                     }
 
                     $fixedCount = $violations->filter(fn ($v) => $v['fix'] !== null)->count();
