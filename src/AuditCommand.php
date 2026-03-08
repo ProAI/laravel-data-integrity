@@ -8,6 +8,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Output\ConsoleOutputInterface;
+use Symfony\Component\Console\Output\ConsoleSectionOutput;
 
 #[AsCommand(name: 'db:audit', description: 'Run database audits.')]
 class AuditCommand extends Command
@@ -21,7 +23,8 @@ class AuditCommand extends Command
                 {directory? : Only run audits from this subdirectory}
                 {--model= : Only run audits for this model}
                 {--filter= : Only run audits whose description matches this string}
-                {--fix : Fix issues automatically}';
+                {--fix : Fix issues automatically}
+                {--max-violations=100 : Maximum number of violations to display per audit}';
 
     /**
      * Execute the console command.
@@ -116,18 +119,31 @@ class AuditCommand extends Command
 
         $this->newLine();
 
+        $maxDisplayedViolations = (int) $this->option('max-violations');
+
         $allViolations = [];
 
         $grouped = collect($audits)->groupBy(fn (Audit $audit) => $audit->getModel());
 
+        $consoleOutput = $this->output->getOutput();
+        $useSections = $consoleOutput instanceof ConsoleOutputInterface;
+
         foreach ($grouped as $modelClass => $modelAudits) {
             $shortName = class_basename($modelClass);
 
-            $this->line("  <options=bold>$shortName</>");
+            $headerSection = $useSections ? $consoleOutput->section() : null;
+            $resultsSection = $useSections ? $consoleOutput->section() : null;
+            $progressSection = $useSections ? $consoleOutput->section() : null;
+
+            if ($headerSection) {
+                $headerSection->writeln("  <options=bold>$shortName</>");
+            } else {
+                $this->line("  <options=bold>$shortName</>");
+            }
 
             foreach ($modelAudits as $audit) {
                 $key = spl_object_id($audit);
-                $allViolations[$key] = collect();
+                $allViolations[$key] = ['reasons' => [], 'total' => 0, 'fixed' => 0];
 
                 $query = $modelClass::query();
 
@@ -136,12 +152,20 @@ class AuditCommand extends Command
                 }
 
                 $total = (clone $query)->count();
-                $progress = $this->createProgressBar($total);
+
+                if ($progressSection) {
+                    $progressSection->writeln("  … {$audit->getDescription()}");
+                    $progress = $this->createProgressBar($total, $progressSection);
+                } else {
+                    $this->line("  … {$audit->getDescription()}");
+                    $progress = $this->createProgressBar($total);
+                }
+
                 $progress->start();
 
                 $shouldFix = $this->option('fix');
 
-                $query->chunk($audit->getChunkSize(), function ($chunk) use ($audit, $key, &$allViolations, $progress, $shouldFix) {
+                $query->chunk($audit->getChunkSize(), function ($chunk) use ($audit, $key, &$allViolations, $progress, $shouldFix, $maxDisplayedViolations) {
                     if ($audit->getBeforeCallback()) {
                         ($audit->getBeforeCallback())($chunk);
                     }
@@ -150,14 +174,19 @@ class AuditCommand extends Command
                         $modelName = class_basename($model);
                         $modelKey = $model->getKey();
 
-                        $fail = function (string $reason, ?Closure $fix = null) use (&$allViolations, $key, $modelName, $modelKey, $shouldFix) {
-                            $allViolations[$key]->push([
-                                'reason' => "{$modelName} #{$modelKey}: {$reason}",
-                                'fix' => $fix,
-                            ]);
+                        $fail = function (string $reason, ?Closure $fix = null) use (&$allViolations, $key, $modelName, $modelKey, $shouldFix, $maxDisplayedViolations) {
+                            $allViolations[$key]['total']++;
 
-                            if ($shouldFix && $fix) {
-                                $fix();
+                            if (count($allViolations[$key]['reasons']) < $maxDisplayedViolations) {
+                                $allViolations[$key]['reasons'][] = "{$modelName} #{$modelKey}: {$reason}";
+                            }
+
+                            if ($fix) {
+                                if ($shouldFix) {
+                                    $fix();
+                                }
+
+                                $allViolations[$key]['fixed']++;
                             }
                         };
 
@@ -174,41 +203,61 @@ class AuditCommand extends Command
                 });
 
                 $progress->finish();
-                $this->output->write("\r\033[K");
+
+                if ($progressSection) {
+                    $progressSection->clear();
+                } else {
+                    $this->output->write("\r\033[K");
+                    $this->output->write("\033[1A\033[K");
+                }
+
+                $stats = $allViolations[$key];
+                $passed = $stats['total'] === 0;
+                $icon = $passed ? '<fg=green>✓</>' : '<fg=red>✗</>';
+
+                $resultLines = ["  $icon {$audit->getDescription()}"];
+
+                if (! $passed) {
+                    foreach ($stats['reasons'] as $i => $reason) {
+                        $number = $i + 1;
+                        $resultLines[] = "    <fg=red>$number)</> $reason";
+                    }
+
+                    if ($stats['total'] > count($stats['reasons'])) {
+                        $remaining = $stats['total'] - count($stats['reasons']);
+                        $resultLines[] = "    <fg=gray>… and $remaining more</>";
+                    }
+
+                    if ($this->option('fix') && $stats['fixed'] > 0) {
+                        $resultLines[] = "    <fg=cyan>→ Fixed {$stats['fixed']} ".Str::plural('record', $stats['fixed']).'</>';
+                    }
+                }
+
+                if ($resultsSection) {
+                    foreach ($resultLines as $resultLine) {
+                        $resultsSection->writeln($resultLine);
+                    }
+                } else {
+                    foreach ($resultLines as $resultLine) {
+                        $this->line($resultLine);
+                    }
+                }
             }
 
             $suiteHasFailed = $modelAudits
-                ->contains(fn (Audit $audit) => $allViolations[spl_object_id($audit)]->isNotEmpty());
+                ->contains(fn (Audit $audit) => $allViolations[spl_object_id($audit)]['total'] > 0);
 
             $badge = $suiteHasFailed
                 ? '  <fg=black;bg=red> FAIL </>'
                 : '  <fg=black;bg=green> PASS </>';
 
-            $this->output->write("\033[1A");
-            $this->line("$badge <options=bold>$shortName</>     ");
-
-            foreach ($modelAudits as $audit) {
-                $violations = $allViolations[spl_object_id($audit)];
-                $passed = $violations->isEmpty();
-                $icon = $passed ? '<fg=green>✓</>' : '<fg=red>✗</>';
-
-                $this->line("  $icon {$audit->getDescription()}");
-
-                if (! $passed) {
-                    foreach ($violations->pluck('reason') as $i => $reason) {
-                        $number = $i + 1;
-                        $this->line("    <fg=red>$number)</> $reason");
-                    }
-
-                    $fixedCount = $violations->filter(fn ($v) => $v['fix'] !== null)->count();
-
-                    if ($this->option('fix') && $fixedCount > 0) {
-                        $this->line("    <fg=cyan>→ Fixed $fixedCount ".Str::plural('record', $fixedCount).'</>');
-                    }
-                }
+            if ($headerSection) {
+                $headerSection->overwrite("$badge <options=bold>$shortName</>");
+                $resultsSection->writeln('');
+            } else {
+                $this->line("  $badge");
+                $this->newLine();
             }
-
-            $this->newLine();
         }
 
         $this->printSummary($audits, $allViolations, $startTime);
@@ -229,12 +278,12 @@ class AuditCommand extends Command
         $totalFixed = 0;
 
         foreach ($audits as $audit) {
-            $violations = $allViolations[spl_object_id($audit)];
+            $stats = $allViolations[spl_object_id($audit)];
 
-            if ($violations->isNotEmpty()) {
+            if ($stats['total'] > 0) {
                 $failedCount++;
-                $totalFailures += $violations->count();
-                $totalFixed += $violations->filter(fn ($v) => $v['fix'] !== null)->count();
+                $totalFailures += $stats['total'];
+                $totalFixed += $stats['fixed'];
             }
         }
 
@@ -262,9 +311,11 @@ class AuditCommand extends Command
      *
      * @return \Symfony\Component\Console\Helper\ProgressBar
      */
-    protected function createProgressBar(int $total): ProgressBar
+    protected function createProgressBar(int $total, ?ConsoleSectionOutput $section = null): ProgressBar
     {
-        $progress = $this->output->createProgressBar($total);
+        $progress = $section
+            ? new ProgressBar($section, $total)
+            : $this->output->createProgressBar($total);
         $progress->setFormat('  %percent:3s%% [%bar%] %current%/%max%');
         $progress->setBarCharacter('<fg=green>█</>');
         $progress->setEmptyBarCharacter('<fg=gray>░</>');
