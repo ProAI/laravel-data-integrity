@@ -28,11 +28,10 @@ class AuditCommand extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return void
      */
     public function handle(): void
     {
+        /** @var string|null $subdirectory */
         $subdirectory = $this->argument('directory');
 
         $auditsPath = AuditManager::getAuditsPath();
@@ -52,6 +51,7 @@ class AuditCommand extends Command
 
         $audits = $this->collectAudits($auditClasses);
 
+        /** @var string|null $modelFilter */
         $modelFilter = $this->option('model');
 
         if ($modelFilter) {
@@ -61,6 +61,7 @@ class AuditCommand extends Command
             ));
         }
 
+        /** @var string|null $descriptionFilter */
         $descriptionFilter = $this->option('filter');
 
         if ($descriptionFilter) {
@@ -111,7 +112,6 @@ class AuditCommand extends Command
      * Execute the collected audits.
      *
      * @param  Audit[]  $audits
-     * @return void
      */
     protected function runAudits(array $audits): void
     {
@@ -121,6 +121,7 @@ class AuditCommand extends Command
 
         $maxDisplayedViolations = (int) $this->option('max-violations');
 
+        /** @var array<int, array{reasons: list<string>, total: int, fixed: int}> $allViolations */
         $allViolations = [];
 
         $grouped = collect($audits)->groupBy(fn (Audit $audit) => $audit->getModel());
@@ -129,11 +130,12 @@ class AuditCommand extends Command
         $useSections = $consoleOutput instanceof ConsoleOutputInterface;
 
         foreach ($grouped as $modelClass => $modelAudits) {
+            /** @var class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
             $shortName = class_basename($modelClass);
 
-            $headerSection = $useSections ? $consoleOutput->section() : null;
-            $resultsSection = $useSections ? $consoleOutput->section() : null;
-            $progressSection = $useSections ? $consoleOutput->section() : null;
+            $headerSection = $consoleOutput instanceof ConsoleOutputInterface ? $consoleOutput->section() : null;
+            $resultsSection = $consoleOutput instanceof ConsoleOutputInterface ? $consoleOutput->section() : null;
+            $progressSection = $consoleOutput instanceof ConsoleOutputInterface ? $consoleOutput->section() : null;
 
             if ($headerSection) {
                 $headerSection->writeln("  <options=bold>$shortName</>");
@@ -165,7 +167,9 @@ class AuditCommand extends Command
 
                 $shouldFix = $this->option('fix');
 
-                $query->chunk($audit->getChunkSize(), function ($chunk) use ($audit, $key, &$allViolations, $progress, $shouldFix, $maxDisplayedViolations) {
+                $violations = &$allViolations[$key];
+
+                $query->chunk($audit->getChunkSize(), function (Collection $chunk) use ($audit, &$violations, $progress, $shouldFix, $maxDisplayedViolations) {
                     if ($audit->getBeforeCallback()) {
                         ($audit->getBeforeCallback())($chunk);
                     }
@@ -174,11 +178,12 @@ class AuditCommand extends Command
                         $modelName = class_basename($model);
                         $modelKey = $model->getKey();
 
-                        $fail = function (string $reason, ?Closure $fix = null) use (&$allViolations, $key, $modelName, $modelKey, $shouldFix, $maxDisplayedViolations) {
-                            $allViolations[$key]['total']++;
+                        $fail = function (string $reason, ?Closure $fix = null) use (&$violations, $modelName, $modelKey, $shouldFix, $maxDisplayedViolations) {
+                            /** @var array{reasons: list<string>, total: int, fixed: int} $violations */
+                            $violations['total']++;
 
-                            if (count($allViolations[$key]['reasons']) < $maxDisplayedViolations) {
-                                $allViolations[$key]['reasons'][] = "{$modelName} #{$modelKey}: {$reason}";
+                            if (count($violations['reasons']) < $maxDisplayedViolations) {
+                                $violations['reasons'][] = "{$modelName} #{$modelKey}: {$reason}";
                             }
 
                             if ($fix) {
@@ -186,7 +191,7 @@ class AuditCommand extends Command
                                     $fix();
                                 }
 
-                                $allViolations[$key]['fixed']++;
+                                $violations['fixed']++;
                             }
                         };
 
@@ -211,6 +216,7 @@ class AuditCommand extends Command
                     $this->output->write("\033[1A\033[K");
                 }
 
+                /** @var array<int, array{reasons: list<string>, total: int, fixed: int}> $allViolations */
                 $stats = $allViolations[$key];
                 $passed = $stats['total'] === 0;
                 $icon = $passed ? '<fg=green>✓</>' : '<fg=red>✗</>';
@@ -251,7 +257,7 @@ class AuditCommand extends Command
                 ? '  <fg=black;bg=red> FAIL </>'
                 : '  <fg=black;bg=green> PASS </>';
 
-            if ($headerSection) {
+            if ($headerSection && $resultsSection) {
                 $headerSection->overwrite("$badge <options=bold>$shortName</>");
                 $resultsSection->writeln('');
             } else {
@@ -267,8 +273,7 @@ class AuditCommand extends Command
      * Print the final summary line with totals and elapsed time.
      *
      * @param  Audit[]  $audits
-     * @param  array<int, Collection>  $allViolations
-     * @return void
+     * @param  array<int, array{reasons: list<string>, total: int, fixed: int}>  $allViolations
      */
     protected function printSummary(array $audits, array $allViolations, float $startTime): void
     {
@@ -308,8 +313,6 @@ class AuditCommand extends Command
 
     /**
      * Create a styled progress bar for the given total.
-     *
-     * @return \Symfony\Component\Console\Helper\ProgressBar
      */
     protected function createProgressBar(int $total, ?ConsoleSectionOutput $section = null): ProgressBar
     {
@@ -326,8 +329,6 @@ class AuditCommand extends Command
 
     /**
      * Determine if the given path is absolute.
-     *
-     * @return bool
      */
     protected function isAbsolutePath(string $path): bool
     {

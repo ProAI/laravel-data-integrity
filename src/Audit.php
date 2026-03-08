@@ -8,43 +8,31 @@ class Audit
 {
     /**
      * The description of this audit.
-     *
-     * @var string|null
      */
     protected ?string $description = null;
 
     /**
      * The query callback for scoping the audit.
-     *
-     * @var \Closure|null
      */
     protected ?Closure $queryCallback = null;
 
     /**
      * The chunk size for this audit.
-     *
-     * @var int
      */
     protected int $chunkSize;
 
     /**
      * The callback to run before processing a chunk.
-     *
-     * @var \Closure|null
      */
     protected ?Closure $beforeCallback = null;
 
     /**
      * The callback to run after processing a chunk.
-     *
-     * @var \Closure|null
      */
     protected ?Closure $afterCallback = null;
 
     /**
      * The validation callback.
-     *
-     * @var \Closure|null
      */
     protected ?Closure $validateCallback = null;
 
@@ -133,8 +121,6 @@ class Audit
 
     /**
      * Get the description of this audit.
-     *
-     * @return string|null
      */
     public function getDescription(): ?string
     {
@@ -153,8 +139,6 @@ class Audit
 
     /**
      * Get the query callback.
-     *
-     * @return \Closure|null
      */
     public function getQueryCallback(): ?Closure
     {
@@ -163,8 +147,6 @@ class Audit
 
     /**
      * Get the chunk size.
-     *
-     * @return int
      */
     public function getChunkSize(): int
     {
@@ -173,8 +155,6 @@ class Audit
 
     /**
      * Get the before callback.
-     *
-     * @return \Closure|null
      */
     public function getBeforeCallback(): ?Closure
     {
@@ -183,8 +163,6 @@ class Audit
 
     /**
      * Get the after callback.
-     *
-     * @return \Closure|null
      */
     public function getAfterCallback(): ?Closure
     {
@@ -193,8 +171,6 @@ class Audit
 
     /**
      * Get the validate callback.
-     *
-     * @return \Closure|null
      */
     public function getValidateCallback(): ?Closure
     {

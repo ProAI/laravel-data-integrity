@@ -31,6 +31,7 @@ class AuditDiscovery
             return collect();
         }
 
+        /** @var Collection<int, class-string<AuditCase>> */
         return collect(Finder::create()->files()->name('*.php')->in($path))
             ->map(fn (SplFileInfo $file) => $this->classFromFile($file))
             ->filter(fn (?string $class) => $class && $this->isAudit($class))
@@ -39,12 +40,14 @@ class AuditDiscovery
 
     /**
      * Extract the fully-qualified class name from a PHP file.
-     *
-     * @return string|null
      */
     protected function classFromFile(SplFileInfo $file): ?string
     {
         $contents = file_get_contents($file->getRealPath());
+
+        if ($contents === false) {
+            return null;
+        }
 
         $namespace = null;
         $class = null;
@@ -66,8 +69,6 @@ class AuditDiscovery
 
     /**
      * Determine whether the given class is a concrete Audit subclass.
-     *
-     * @return bool
      */
     protected function isAudit(string $class): bool
     {

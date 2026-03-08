@@ -13,12 +13,10 @@ abstract class AuditCase
      *
      * @var class-string<\Illuminate\Database\Eloquent\Model>
      */
-    protected $model;
+    protected string $model;
 
     /**
      * Define an inline audit.
-     *
-     * @return \ProAI\DataIntegrity\Audit
      */
     protected function audit(): Audit
     {
@@ -29,11 +27,14 @@ abstract class AuditCase
      * Delegate to a registered check class (by class-string or alias).
      *
      * @param  class-string<IntegrityCheck>|string  $checkClassOrAlias
-     * @return \ProAI\DataIntegrity\Audit
+     */
+    /**
+     * @param  array<mixed>  $args
      */
     protected function auditUsing(string $checkClassOrAlias, array $args = []): Audit
     {
         $class = AuditManager::resolveCheck($checkClassOrAlias);
+        /** @var IntegrityCheck $check */
         $check = new $class(...$args);
 
         $description = method_exists($check, 'description')
@@ -65,10 +66,8 @@ abstract class AuditCase
 
     /**
      * Get the model class this audit operates on.
-     *
-     * @return string
      */
-    public function getModel()
+    public function getModel(): string
     {
         return $this->model;
     }
@@ -78,7 +77,10 @@ abstract class AuditCase
      *
      * @return Audit[]
      */
-    public function getAudits()
+    /**
+     * @return Audit[]
+     */
+    public function getAudits(): array
     {
         $audits = [];
 

@@ -9,8 +9,6 @@ interface IntegrityCheck
 {
     /**
      * Validate a single model instance.
-     *
-     * @return void
      */
-    public function validate(Model $model, Closure $fail);
+    public function validate(Model $model, Closure $fail): void;
 }

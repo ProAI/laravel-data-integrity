@@ -2,13 +2,13 @@
 
 namespace ProAI\DataIntegrity\Tests\Fixtures\Audits\Fixable;
 
-use ProAI\DataIntegrity\AuditCase;
 use ProAI\DataIntegrity\Audit;
+use ProAI\DataIntegrity\AuditCase;
 use ProAI\DataIntegrity\Tests\Fixtures\User;
 
 class FixableAudit extends AuditCase
 {
-    protected $model = User::class;
+    protected string $model = User::class;
 
     public function checkFixable(): Audit
     {

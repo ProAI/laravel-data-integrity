@@ -1,7 +1,7 @@
 <?php
 
-use ProAI\DataIntegrity\AuditManager;
 use ProAI\DataIntegrity\Audit;
+use ProAI\DataIntegrity\AuditManager;
 use ProAI\DataIntegrity\Tests\Fixtures\User;
 
 describe('Audit', function () {

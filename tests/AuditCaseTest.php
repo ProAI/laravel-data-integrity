@@ -1,8 +1,8 @@
 <?php
 
+use ProAI\DataIntegrity\Audit;
 use ProAI\DataIntegrity\AuditCase;
 use ProAI\DataIntegrity\AuditManager;
-use ProAI\DataIntegrity\Audit;
 use ProAI\DataIntegrity\Tests\Fixtures\Checks\AlwaysFailsCheck;
 use ProAI\DataIntegrity\Tests\Fixtures\Checks\ConstructorArgsCheck;
 use ProAI\DataIntegrity\Tests\Fixtures\User;
@@ -18,7 +18,7 @@ describe('AuditCase', function () {
         it('collects an Audit from a check method', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkTest(): Audit
                 {
@@ -40,7 +40,7 @@ describe('AuditCase', function () {
         it('sets query callback and chunk size', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkScoped(): Audit
                 {
@@ -61,7 +61,7 @@ describe('AuditCase', function () {
         it('sets before callback', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkWithBefore(): Audit
                 {
@@ -78,7 +78,7 @@ describe('AuditCase', function () {
         it('sets after callback', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkWithAfter(): Audit
                 {
@@ -95,7 +95,7 @@ describe('AuditCase', function () {
         it('defaults chunk size to 1000', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkDefaultChunk(): Audit
                 {
@@ -111,7 +111,7 @@ describe('AuditCase', function () {
         it('collects multiple audits from multiple check methods', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkFirst(): Audit
                 {
@@ -134,7 +134,7 @@ describe('AuditCase', function () {
         it('derives description from method name when not provided', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkEmailIsValid(): Audit
                 {
@@ -153,7 +153,7 @@ describe('AuditCase', function () {
         it('creates an Audit with validate callback from check', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkAlwaysFails(): Audit
                 {
@@ -169,7 +169,7 @@ describe('AuditCase', function () {
         it('passes constructor arguments to the check class', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkWithArgs(): Audit
                 {
@@ -185,7 +185,7 @@ describe('AuditCase', function () {
         it('derives description from class name', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkAlwaysFails(): Audit
                 {
@@ -201,7 +201,7 @@ describe('AuditCase', function () {
 
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
 
                 public function checkAlwaysFails(): Audit
                 {
@@ -246,7 +246,7 @@ describe('AuditCase', function () {
         it('returns the model class', function () {
             $audit = new class extends AuditCase
             {
-                protected $model = User::class;
+                protected string $model = User::class;
             };
 
             expect($audit->getModel())->toBe(User::class);
