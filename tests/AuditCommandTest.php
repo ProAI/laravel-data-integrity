@@ -26,13 +26,13 @@ describe('AuditCommand', function () {
                 ->assertExitCode(0);
         });
 
-        it('outputs a PASS badge for passing audits', function () {
+        it('outputs a passed count in the summary for passing audits', function () {
             User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
 
             AuditManager::discoverIn(auditsPath());
 
             $this->artisan('db:audit', ['directory' => 'Passing'])
-                ->expectsOutputToContain('PASS')
+                ->expectsOutputToContain('passed')
                 ->assertExitCode(0);
         });
 
@@ -56,7 +56,7 @@ describe('AuditCommand', function () {
             AuditManager::discoverIn(auditsPath());
 
             $this->artisan('db:audit', ['directory' => 'Failing'])
-                ->expectsOutputToContain('FAIL')
+                ->expectsOutputToContain('failed')
                 ->assertExitCode(0);
         });
 
@@ -155,7 +155,7 @@ describe('AuditCommand', function () {
             AuditManager::discoverIn(auditsPath());
 
             $this->artisan('db:audit', ['directory' => 'Check'])
-                ->expectsOutputToContain('FAIL')
+                ->expectsOutputToContain('failed')
                 ->assertExitCode(0);
         });
 
@@ -180,7 +180,7 @@ describe('AuditCommand', function () {
             AuditManager::discoverIn(auditsPath());
 
             $this->artisan('db:audit', ['directory' => 'Scoped'])
-                ->expectsOutputToContain('PASS')
+                ->expectsOutputToContain('passed')
                 ->assertExitCode(0);
         });
 
@@ -196,7 +196,7 @@ describe('AuditCommand', function () {
             AuditManager::discoverIn(auditsPath());
 
             $this->artisan('db:audit', ['directory' => 'Registered'])
-                ->expectsOutputToContain('FAIL')
+                ->expectsOutputToContain('failed')
                 ->assertExitCode(0);
         });
 
@@ -234,7 +234,7 @@ describe('AuditCommand', function () {
             User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
 
             $this->artisan('db:audit', ['directory' => 'Sub'])
-                ->expectsOutputToContain('PASS')
+                ->expectsOutputToContain('passed')
                 ->assertExitCode(0);
         });
 
